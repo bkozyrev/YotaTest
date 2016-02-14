@@ -8,4 +8,11 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="WidgetsStyle" parent="AppTheme">
+        <item name="android:padding">@dimen/widgets_padding</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:textSize">@dimen/widgets_text_size</item>
+    </style>
+
 </resources>
