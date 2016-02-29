@@ -1,9 +1,11 @@
 package com.bkozyrev.yotatest;
 
-import android.support.annotation.UiThread;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,68 +21,76 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import butterknife.Bind;
-import butterknife.ButterKnife;
-import butterknife.OnClick;
-import rx.Observable;
-import rx.Subscriber;
-import rx.Subscription;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
+public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
-public class MainActivity extends AppCompatActivity {
-
-    private Subscription mSubscription;
-
-    @Bind(R.id.url) EditText mUrlEditText;              //Поле для ввода урла
-    @Bind(R.id.html_code) TextView mHtmlCodeTextView;   //Текст с кодом со страницы
+    EditText mUrlEditText;              //Поле для ввода урла
+    TextView mHtmlCodeTextView;         //Текст с кодом со страницы
+    Button mBtnClear, mBtnSendRequest;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ButterKnife.bind(this);
+        mUrlEditText = (EditText) findViewById(R.id.url);
+        mHtmlCodeTextView = (TextView) findViewById(R.id.html_code);
+        mBtnClear = (Button) findViewById(R.id.clear_text);
+        mBtnSendRequest = (Button) findViewById(R.id.send_request);
+
+        mBtnClear.setOnClickListener(this);
+        mBtnSendRequest.setOnClickListener(this);
+
         trustAllHosts();
     }
 
     /*
-     *  Метод по очистке текста
+     * Обработка нажатий
+     * @param view - нажатый элемент
      */
-    @OnClick(R.id.clear_text) void clearText(){
-        mHtmlCodeTextView.setText("");
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()){
+            case R.id.clear_text:
+                mHtmlCodeTextView.setText("");
+                break;
+            case R.id.send_request:
+                Task task = new Task(mUrlEditText.getText().toString());
+                task.execute();
+                break;
+            default:
+                break;
+        }
     }
 
     /*
-     *  Подготовка запроса и обработка полученного результата
+     *  Подготовка, выполнение запроса и обработка полученного результата
      */
-    @OnClick(R.id.send_request) void handleClick(){
 
-        mSubscription = Observable.create(new Observable.OnSubscribe<String>() {
-                    @Override
-                    public void call(Subscriber<? super String> subscriber) {
-                        subscriber.onNext(sendRequest(mUrlEditText.getText().toString()));
-                    }
-                })
-                .subscribeOn(Schedulers.newThread())  //Запрос будет создан в отдельном потоке
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Subscriber<String>() {
-                    @Override
-                    public void onCompleted() {
+    class Task extends AsyncTask<Void, Void, String> {
 
-                    }
+        private String url;
 
-                    @Override
-                    public void onError(Throwable e) {
-                        Toast.makeText(getBaseContext(), "An error occured", Toast.LENGTH_SHORT).show();
-                    }
+        public Task(String url){
+            this.url = url;
+        }
 
-                    @Override
-                    public void onNext(String response) {
-                        mHtmlCodeTextView.setText(response.substring(0, 5000)); //Выводит первые 10000 символов
-                        Toast.makeText(getBaseContext(), "Показаны первые 5000 символов", Toast.LENGTH_SHORT).show();
-                    }
-                });
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected String doInBackground(Void... params) {
+            return sendRequest(url);
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            mHtmlCodeTextView.setText(result.substring(0, 5000)); //Выводит первые 5000 символов
+            Toast.makeText(getBaseContext(), "Показаны первые 5000 символов", Toast.LENGTH_SHORT).show();
+            super.onPostExecute(result);
+        }
     }
 
     /*
@@ -125,19 +135,10 @@ public class MainActivity extends AppCompatActivity {
         return result;
     }
 
-    protected void onStop() {
-        unsubscribe();
-        super.onStop();
-    }
-
-    private void unsubscribe() {
-        if(mSubscription != null && !mSubscription.isUnsubscribed())
-            mSubscription.unsubscribe();
-    }
-
     /**
      * Trust every server - dont check for any certificate
      */
+
     public static void trustAllHosts() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
