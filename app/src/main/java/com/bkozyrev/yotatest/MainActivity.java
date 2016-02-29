@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,9 +24,12 @@ import javax.net.ssl.X509TrustManager;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
+    private static final int CONNECT_TIMEOUT = 4000;
+
     EditText mUrlEditText;              //Поле для ввода урла
     TextView mHtmlCodeTextView;         //Текст с кодом со страницы
     Button mBtnClear, mBtnSendRequest;
+    ProgressBar mProgressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mHtmlCodeTextView = (TextView) findViewById(R.id.html_code);
         mBtnClear = (Button) findViewById(R.id.clear_text);
         mBtnSendRequest = (Button) findViewById(R.id.send_request);
+        mProgressBar = (ProgressBar) findViewById(R.id.progress_bar);
 
         mBtnClear.setOnClickListener(this);
         mBtnSendRequest.setOnClickListener(this);
@@ -77,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         protected void onPreExecute() {
+            mProgressBar.setVisibility(View.VISIBLE);
             super.onPreExecute();
         }
 
@@ -87,8 +93,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         protected void onPostExecute(String result) {
-            mHtmlCodeTextView.setText(result.substring(0, 5000)); //Выводит первые 5000 символов
-            Toast.makeText(getBaseContext(), "Показаны первые 5000 символов", Toast.LENGTH_SHORT).show();
+            mProgressBar.setVisibility(View.GONE);
+            if(result != null) {
+                mHtmlCodeTextView.setText(result.substring(0, 5000)); //Выводит первые 5000 символов
+                Toast.makeText(getBaseContext(), "Показаны первые 5000 символов", Toast.LENGTH_SHORT).show();
+            }
+            else{
+                Toast.makeText(getBaseContext(), "Произошла ошибка", Toast.LENGTH_SHORT).show();
+            }
             super.onPostExecute(result);
         }
     }
@@ -114,6 +126,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             urlConnection = (HttpURLConnection) url.openConnection();
             urlConnection.setRequestMethod("GET");
+            urlConnection.setConnectTimeout(CONNECT_TIMEOUT);
             urlConnection.connect();
 
             is = urlConnection.getInputStream();
@@ -122,7 +135,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 sb.append((char) symbol);
             }
             result = sb.toString();
-            Log.d("success", "result = " + result);
 
         } catch (Exception e) {
             e.printStackTrace();
